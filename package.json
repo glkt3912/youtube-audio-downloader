@@ -1,0 +1,16 @@
+{
+  "name": "youtube-audio-downloader",
+  "version": "0.1.0",
+  "description": "YouTube Audio Downloader - Tauri Desktop App",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}

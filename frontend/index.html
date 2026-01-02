@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Audio Downloader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1>YouTube Audio Downloader</h1>
+            <p class="subtitle">YouTubeから音声をダウンロード</p>
+        </header>
+
+        <!-- 依存関係警告バナー -->
+        <div id="dependency-warning" class="warning-banner hidden">
+            <div class="warning-content">
+                <h3>⚠️ 必要なツールがインストールされていません</h3>
+                <div id="missing-deps"></div>
+                <button id="show-install-guide" class="btn-secondary">インストール手順を表示</button>
+            </div>
+        </div>
+
+        <!-- インストールガイドモーダル -->
+        <div id="install-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>インストール手順</h2>
+                    <button id="close-modal" class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body" id="install-guide-content"></div>
+            </div>
+        </div>
+
+        <!-- ダウンロードフォーム -->
+        <div class="form-section">
+            <div class="form-group">
+                <label for="urls">YouTube URL（複数可、改行区切り）</label>
+                <textarea
+                    id="urls"
+                    placeholder="https://www.youtube.com/watch?v=xxx&#10;https://youtu.be/yyy"
+                    rows="4"
+                ></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="format">フォーマット</label>
+                    <select id="format">
+                        <option value="Mp3">MP3</option>
+                        <option value="M4a">M4A</option>
+                        <option value="Opus">Opus</option>
+                        <option value="Aac">AAC</option>
+                        <option value="Flac">FLAC</option>
+                        <option value="Wav">WAV</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="quality">品質</label>
+                    <select id="quality">
+                        <option value="Best">Best（最高品質）</option>
+                        <option value="High">High（192kbps）</option>
+                        <option value="Medium">Medium（128kbps）</option>
+                        <option value="Low">Low（96kbps）</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="download-btn" class="btn-primary">ダウンロード開始</button>
+        </div>
+
+        <!-- ダウンロードキュー -->
+        <div class="queue-section">
+            <h2>ダウンロードキュー</h2>
+            <div id="queue-list" class="queue-list">
+                <div class="empty-state">
+                    <p>ダウンロードキューは空です</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
