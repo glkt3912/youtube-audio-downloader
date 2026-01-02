@@ -1,4 +1,4 @@
-use crate::models::{AudioFormat, DownloadItem, DownloadStatus, Quality};
+use crate::models::{DownloadItem, DownloadStatus};
 use anyhow::{Context, Result};
 use regex::Regex;
 use std::io::{BufRead, BufReader};
@@ -17,10 +17,6 @@ impl Downloader {
             .to_string_lossy()
             .to_string();
 
-        Self { download_dir }
-    }
-
-    pub fn with_download_dir(download_dir: String) -> Self {
         Self { download_dir }
     }
 

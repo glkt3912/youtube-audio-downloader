@@ -3,5 +3,4 @@ pub mod downloader;
 pub mod queue;
 
 pub use dependency_checker::{DependencyStatus, InstallGuide};
-pub use downloader::Downloader;
 pub use queue::DownloadQueue;
