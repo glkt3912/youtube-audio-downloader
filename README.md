@@ -54,7 +54,7 @@ sudo apt install yt-dlp ffmpeg
 ### 1. リポジトリのクローン
 
 ```bash
-git clone https://github.com/yourusername/youtube-audio-downloader.git
+git clone https://github.com/glkt3912/youtube-audio-downloader.git
 cd youtube-audio-downloader
 ```
 
@@ -250,7 +250,7 @@ cargo test
 
 ## サポート
 
-問題が発生した場合は、[Issues](https://github.com/yourusername/youtube-audio-downloader/issues) で報告してください。
+問題が発生した場合は、[Issues](https://github.com/glkt3912/youtube-audio-downloader/issues) で報告してください。
 
 ---
 
