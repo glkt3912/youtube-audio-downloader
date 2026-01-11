@@ -119,9 +119,8 @@ impl DownloadQueue {
                             }
 
                             let mut active_lock = active_clone.lock();
-                            active_lock.retain(|active_item| {
-                                !Arc::ptr_eq(active_item, &item_clone)
-                            });
+                            active_lock
+                                .retain(|active_item| !Arc::ptr_eq(active_item, &item_clone));
                         });
 
                         task_handles.lock().push(handle);

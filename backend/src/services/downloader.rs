@@ -20,17 +20,10 @@ impl Downloader {
         Self { download_dir }
     }
 
-    pub async fn download(
-        &self,
-        item: Arc<Mutex<DownloadItem>>,
-    ) -> Result<()> {
+    pub async fn download(&self, item: Arc<Mutex<DownloadItem>>) -> Result<()> {
         let (url, format, quality) = {
             let item_lock = item.lock().await;
-            (
-                item_lock.url.clone(),
-                item_lock.format,
-                item_lock.quality,
-            )
+            (item_lock.url.clone(), item_lock.format, item_lock.quality)
         };
 
         item.lock().await.update_status(DownloadStatus::Downloading);
@@ -53,14 +46,9 @@ impl Downloader {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        let mut child = cmd
-            .spawn()
-            .context("Failed to spawn yt-dlp process")?;
+        let mut child = cmd.spawn().context("Failed to spawn yt-dlp process")?;
 
-        let stdout = child
-            .stdout
-            .take()
-            .context("Failed to capture stdout")?;
+        let stdout = child.stdout.take().context("Failed to capture stdout")?;
 
         let reader = BufReader::new(stdout);
         let progress_regex = Regex::new(r"\[download\]\s+(\d+\.?\d*)%").unwrap();

@@ -79,7 +79,7 @@ pub enum Quality {
 impl Quality {
     pub fn as_str(&self) -> &str {
         match self {
-            Quality::Best => "0",      // yt-dlp uses 0 for best quality
+            Quality::Best => "0", // yt-dlp uses 0 for best quality
             Quality::High => "192K",
             Quality::Medium => "128K",
             Quality::Low => "96K",

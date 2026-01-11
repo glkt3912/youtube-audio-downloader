@@ -1,5 +1,5 @@
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 static YOUTUBE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/)[\w-]+").unwrap()
@@ -46,9 +46,15 @@ mod tests {
 
     #[test]
     fn test_valid_urls() {
-        assert!(is_valid_youtube_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
-        assert!(is_valid_youtube_url("https://youtube.com/watch?v=dQw4w9WgXcQ"));
-        assert!(is_valid_youtube_url("http://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "http://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
         assert!(is_valid_youtube_url("https://youtu.be/dQw4w9WgXcQ"));
         assert!(is_valid_youtube_url("www.youtube.com/watch?v=dQw4w9WgXcQ"));
         assert!(is_valid_youtube_url("youtube.com/watch?v=dQw4w9WgXcQ"));
