@@ -7,7 +7,7 @@ TauriアプリケーションをLinux環境でビルド・実行するために�
 ```bash
 sudo apt-get install -y \
   libgtk-3-dev \
-  libwebkit2gtk-4.0-dev \
+  libwebkit2gtk-4.1-dev \
   libappindicator3-dev \
   librsvg2-dev \
   patchelf
@@ -26,7 +26,7 @@ sudo apt-get install -y \
 
 **なぜ必要**: TauriはLinux上でGTK 3をベースにネイティブウィンドウを作成します。デスクトップ環境との統合に必須です。
 
-### libwebkit2gtk-4.0-dev
+### libwebkit2gtk-4.1-dev
 
 **役割**: WebKit2ベースのWebレンダリングエンジン
 
@@ -96,7 +96,7 @@ sudo apt-get install -y \
 #### Debian / Ubuntu
 ```bash
 sudo apt-get update
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev \
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
   libappindicator3-dev librsvg2-dev patchelf
 ```
 
@@ -120,7 +120,7 @@ GitHub Actions等のCI環境では、ビルドステップの前にこれらの�
   if: runner.os == 'Linux'
   run: |
     sudo apt-get update
-    sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev \
+    sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
       libappindicator3-dev librsvg2-dev patchelf
 ```
 
@@ -145,7 +145,7 @@ sudo apt-get install -y libgtk-3-dev
 
 **解決方法**:
 ```bash
-sudo apt-get install -y libwebkit2gtk-4.0-dev
+sudo apt-get install -y libwebkit2gtk-4.1-dev
 ```
 
 ### パッケージバージョンの確認
