@@ -54,25 +54,23 @@ impl Downloader {
         let progress_regex = Regex::new(r"\[download\]\s+(\d+\.?\d*)%").unwrap();
         let title_regex = Regex::new(r"\[info\]\s+(.+?):\s+Downloading").unwrap();
 
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if let Some(captures) = title_regex.captures(&line) {
-                    if let Some(title) = captures.get(1) {
-                        item.lock().await.set_title(title.as_str().to_string());
+        for line in reader.lines().map_while(Result::ok) {
+            if let Some(captures) = title_regex.captures(&line) {
+                if let Some(title) = captures.get(1) {
+                    item.lock().await.set_title(title.as_str().to_string());
+                }
+            }
+
+            if let Some(captures) = progress_regex.captures(&line) {
+                if let Some(progress_str) = captures.get(1) {
+                    if let Ok(progress) = progress_str.as_str().parse::<f32>() {
+                        item.lock().await.update_progress(progress);
                     }
                 }
+            }
 
-                if let Some(captures) = progress_regex.captures(&line) {
-                    if let Some(progress_str) = captures.get(1) {
-                        if let Ok(progress) = progress_str.as_str().parse::<f32>() {
-                            item.lock().await.update_progress(progress);
-                        }
-                    }
-                }
-
-                if line.contains("[ExtractAudio]") || line.contains("Merging formats") {
-                    item.lock().await.update_status(DownloadStatus::Converting);
-                }
+            if line.contains("[ExtractAudio]") || line.contains("Merging formats") {
+                item.lock().await.update_status(DownloadStatus::Converting);
             }
         }
 
