@@ -11,7 +11,8 @@ sudo apt-get install -y \
   libappindicator3-dev \
   librsvg2-dev \
   patchelf \
-  libsoup2.4-dev
+  libsoup2.4-dev \
+  libjavascriptcoregtk-4.1-dev
 ```
 
 ## 各ライブラリの詳細
@@ -90,6 +91,18 @@ sudo apt-get install -y \
 
 **なぜ必要**: WebKit2GTKがネットワーク通信を行うために必要です。Webページの読み込み、API通信、WebSocket接続などに使用されます。
 
+### libjavascriptcoregtk-4.1-dev
+
+**役割**: JavaScriptエンジンライブラリ
+
+**提供機能**:
+- JavaScript実行エンジン
+- JavaScriptとネイティブコード間のバインディング
+- JIT（Just-In-Time）コンパイル
+- メモリ管理とガベージコレクション
+
+**なぜ必要**: WebKit2GTKのJavaScriptエンジンです。Tauriアプリのフロントエンド（JavaScript）を実行するために必須です。WebViewとRustバックエンド間の通信にも使用されます。
+
 ## なぜLinuxだけこれらが必要なのか
 
 ### プラットフォーム別のアプローチ
@@ -110,13 +123,15 @@ sudo apt-get install -y \
 ```bash
 sudo apt-get update
 sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
-  libappindicator3-dev librsvg2-dev patchelf libsoup2.4-dev
+  libappindicator3-dev librsvg2-dev patchelf libsoup2.4-dev \
+  libjavascriptcoregtk-4.1-dev
 ```
 
 #### Fedora / RHEL / CentOS
 ```bash
 sudo dnf install gtk3-devel webkit2gtk3-devel \
-  libappindicator-gtk3-devel librsvg2-devel libsoup-devel
+  libappindicator-gtk3-devel librsvg2-devel libsoup-devel \
+  javascriptcoregtk4-devel
 ```
 
 #### Arch Linux
@@ -134,7 +149,8 @@ GitHub Actions等のCI環境では、ビルドステップの前にこれらの�
   run: |
     sudo apt-get update
     sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
-      libappindicator3-dev librsvg2-dev patchelf libsoup2.4-dev
+      libappindicator3-dev librsvg2-dev patchelf libsoup2.4-dev \
+      libjavascriptcoregtk-4.1-dev
 ```
 
 ## トラブルシューティング
