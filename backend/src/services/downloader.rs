@@ -62,7 +62,9 @@ impl Downloader {
             for line in reader.lines().map_while(Result::ok) {
                 if let Some(captures) = TITLE_REGEX.captures(&line) {
                     if let Some(title) = captures.get(1) {
-                        item_clone.blocking_lock().set_title(title.as_str().to_string());
+                        item_clone
+                            .blocking_lock()
+                            .set_title(title.as_str().to_string());
                     }
                 }
                 if let Some(captures) = PROGRESS_REGEX.captures(&line) {
@@ -73,7 +75,9 @@ impl Downloader {
                     }
                 }
                 if line.contains("[ExtractAudio]") || line.contains("Merging formats") {
-                    item_clone.blocking_lock().update_status(DownloadStatus::Converting);
+                    item_clone
+                        .blocking_lock()
+                        .update_status(DownloadStatus::Converting);
                 }
             }
         })
