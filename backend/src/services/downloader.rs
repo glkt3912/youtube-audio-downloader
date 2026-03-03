@@ -1,10 +1,16 @@
 use crate::models::{DownloadItem, DownloadStatus};
 use anyhow::{Context, Result};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+static PROGRESS_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\[download\]\s+(\d+\.?\d*)%").unwrap());
+static TITLE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\[info\]\s+(.+?):\s+Downloading").unwrap());
 
 pub struct Downloader {
     download_dir: String,
@@ -51,17 +57,15 @@ impl Downloader {
         let stdout = child.stdout.take().context("Failed to capture stdout")?;
 
         let reader = BufReader::new(stdout);
-        let progress_regex = Regex::new(r"\[download\]\s+(\d+\.?\d*)%").unwrap();
-        let title_regex = Regex::new(r"\[info\]\s+(.+?):\s+Downloading").unwrap();
 
         for line in reader.lines().map_while(Result::ok) {
-            if let Some(captures) = title_regex.captures(&line) {
+            if let Some(captures) = TITLE_REGEX.captures(&line) {
                 if let Some(title) = captures.get(1) {
                     item.lock().await.set_title(title.as_str().to_string());
                 }
             }
 
-            if let Some(captures) = progress_regex.captures(&line) {
+            if let Some(captures) = PROGRESS_REGEX.captures(&line) {
                 if let Some(progress_str) = captures.get(1) {
                     if let Ok(progress) = progress_str.as_str().parse::<f32>() {
                         item.lock().await.update_progress(progress);
