@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "identifier": "com.youtube-audio-downloader.app",
   "build": {
-    "frontendDist": "../frontend",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "frontendDist": "../frontend"
   },
   "app": {
     "withGlobalTauri": true,
