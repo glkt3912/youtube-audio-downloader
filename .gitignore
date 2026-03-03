@@ -21,6 +21,7 @@ yarn-error.log*
 # Tauri
 backend/target/
 backend/WixTools/
+backend/gen/
 
 # Build artifacts
 *.dmg
