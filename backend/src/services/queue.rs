@@ -3,7 +3,7 @@ use crate::services::downloader::Downloader;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use tauri::async_runtime::JoinHandle;
+use tokio::task::JoinHandle;
 
 pub struct DownloadQueue {
     queue: Arc<Mutex<VecDeque<Arc<tokio::sync::Mutex<DownloadItem>>>>>,
@@ -110,7 +110,7 @@ impl DownloadQueue {
                         let downloader_clone = downloader.clone();
                         let item_clone = item_arc.clone();
 
-                        let handle = tauri::async_runtime::spawn(async move {
+                        let handle: JoinHandle<()> = tokio::spawn(async move {
                             let result = downloader_clone.download(item_clone.clone()).await;
 
                             if let Err(e) = result {
@@ -123,7 +123,9 @@ impl DownloadQueue {
                                 .retain(|active_item| !Arc::ptr_eq(active_item, &item_clone));
                         });
 
-                        task_handles.lock().push(handle);
+                        let mut handles = task_handles.lock();
+                        handles.retain(|h| !h.is_finished());
+                        handles.push(handle);
                     }
                 }
 
