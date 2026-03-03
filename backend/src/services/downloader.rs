@@ -56,29 +56,34 @@ impl Downloader {
 
         let stdout = child.stdout.take().context("Failed to capture stdout")?;
 
-        let reader = BufReader::new(stdout);
-
-        for line in reader.lines().map_while(Result::ok) {
-            if let Some(captures) = TITLE_REGEX.captures(&line) {
-                if let Some(title) = captures.get(1) {
-                    item.lock().await.set_title(title.as_str().to_string());
-                }
-            }
-
-            if let Some(captures) = PROGRESS_REGEX.captures(&line) {
-                if let Some(progress_str) = captures.get(1) {
-                    if let Ok(progress) = progress_str.as_str().parse::<f32>() {
-                        item.lock().await.update_progress(progress);
+        let item_clone = item.clone();
+        tokio::task::spawn_blocking(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines().map_while(Result::ok) {
+                if let Some(captures) = TITLE_REGEX.captures(&line) {
+                    if let Some(title) = captures.get(1) {
+                        item_clone.blocking_lock().set_title(title.as_str().to_string());
                     }
                 }
+                if let Some(captures) = PROGRESS_REGEX.captures(&line) {
+                    if let Some(progress_str) = captures.get(1) {
+                        if let Ok(progress) = progress_str.as_str().parse::<f32>() {
+                            item_clone.blocking_lock().update_progress(progress);
+                        }
+                    }
+                }
+                if line.contains("[ExtractAudio]") || line.contains("Merging formats") {
+                    item_clone.blocking_lock().update_status(DownloadStatus::Converting);
+                }
             }
+        })
+        .await
+        .context("stdout reading task panicked")?;
 
-            if line.contains("[ExtractAudio]") || line.contains("Merging formats") {
-                item.lock().await.update_status(DownloadStatus::Converting);
-            }
-        }
-
-        let status = child.wait().context("Failed to wait for yt-dlp process")?;
+        let status = tokio::task::spawn_blocking(move || child.wait())
+            .await
+            .context("process wait task panicked")?
+            .context("Failed to wait for yt-dlp process")?;
 
         if status.success() {
             item.lock().await.update_status(DownloadStatus::Completed);
