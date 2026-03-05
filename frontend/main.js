@@ -26,7 +26,7 @@ async function init() {
         return;
     }
 
-    invoke = window.__TAURI__.tauri.invoke;
+    invoke = window.__TAURI__.core.invoke;
     console.log('Tauri API loaded successfully');
 
     // DOM要素を取得
