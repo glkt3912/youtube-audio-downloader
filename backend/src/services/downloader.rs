@@ -90,8 +90,9 @@ impl Downloader {
             .context("Failed to wait for yt-dlp process")?;
 
         if status.success() {
-            item.lock().await.update_status(DownloadStatus::Completed);
-            item.lock().await.update_progress(100.0);
+            let mut locked = item.lock().await;
+            locked.update_status(DownloadStatus::Completed);
+            locked.update_progress(100.0);
             Ok(())
         } else {
             let error_msg = format!("yt-dlp failed with exit code: {:?}", status.code());
