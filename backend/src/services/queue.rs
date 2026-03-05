@@ -89,7 +89,7 @@ impl DownloadQueue {
         let max_concurrent = self.max_concurrent;
         let task_handles = self.task_handles.clone();
 
-        tauri::async_runtime::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 let should_start = {
                     let active_lock = active.lock();
