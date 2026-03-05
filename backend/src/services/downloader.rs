@@ -50,7 +50,7 @@ impl Downloader {
             .arg("--no-playlist")
             .arg(&url)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::inherit());
 
         let mut child = cmd.spawn().context("Failed to spawn yt-dlp process")?;
 
