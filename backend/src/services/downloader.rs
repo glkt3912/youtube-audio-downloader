@@ -59,13 +59,26 @@ impl Downloader {
             .arg("--no-playlist")
             .arg(&url)
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             .kill_on_drop(true);
 
         let mut child = cmd.spawn().context("Failed to spawn yt-dlp process")?;
 
         let stdout = child.stdout.take().context("Failed to capture stdout")?;
 
+        let stderr = child.stderr.take().context("Failed to capture stderr")?;
+        // Read stderr concurrently so a full pipe can't block yt-dlp; keep the last ERROR line.
+        let last_error = tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            let mut last_error = None;
+            while let Ok(Some(line)) = lines.next_line().await {
+                eprintln!("{line}");
+                if let Some(msg) = line.strip_prefix("ERROR: ") {
+                    last_error = Some(msg.to_string());
+                }
+            }
+            last_error
+        });
         let mut lines = BufReader::new(stdout).lines();
 
         loop {
@@ -106,7 +119,10 @@ impl Downloader {
             locked.update_progress(100.0);
             Ok(())
         } else {
-            let error_msg = format!("yt-dlp failed with exit code: {:?}", status.code());
+            let error_msg =
+                last_error.await.ok().flatten().unwrap_or_else(|| {
+                    format!("yt-dlp failed with exit code: {:?}", status.code())
+                });
             item.lock().await.set_error(error_msg.clone());
             Err(anyhow::anyhow!(error_msg))
         }
@@ -124,24 +140,45 @@ mod tests {
     use super::*;
     use crate::models::{AudioFormat, Quality};
     use std::os::unix::fs::PermissionsExt;
+    use std::sync::Once;
     use std::time::Duration;
+
+    // Fake yt-dlp on PATH: URLs containing "fail" exit with a 403 error, others hang.
+    const FAKE_YTDLP: &str = r#"#!/bin/sh
+for a in "$@"; do url="$a"; done
+case "$url" in
+  *fail*) echo 'WARNING: old' >&2
+          echo 'ERROR: unable to download video data: HTTP Error 403: Forbidden' >&2
+          exit 1 ;;
+  *) echo '[download]  10.0%'; sleep 30 ;;
+esac
+"#;
+
+    fn install_fake_ytdlp() {
+        static ONCE: Once = Once::new();
+        ONCE.call_once(|| {
+            let dir = std::env::temp_dir().join(format!("fake-ytdlp-{}", std::process::id()));
+            std::fs::create_dir_all(&dir).unwrap();
+            let bin = dir.join("yt-dlp");
+            std::fs::write(&bin, FAKE_YTDLP).unwrap();
+            std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+            let path = std::env::var("PATH").unwrap_or_default();
+            std::env::set_var("PATH", format!("{}:{}", dir.display(), path));
+        });
+    }
+
+    fn new_item(url: &str) -> Arc<Mutex<DownloadItem>> {
+        Arc::new(Mutex::new(DownloadItem::new(
+            url.into(),
+            AudioFormat::Mp3,
+            Quality::Best,
+        )))
+    }
 
     #[tokio::test]
     async fn cancel_kills_running_process() {
-        // Fake yt-dlp that prints progress once and then hangs.
-        let dir = std::env::temp_dir().join(format!("fake-ytdlp-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let bin = dir.join("yt-dlp");
-        std::fs::write(&bin, "#!/bin/sh\necho '[download]  10.0%'\nsleep 30\n").unwrap();
-        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let path = std::env::var("PATH").unwrap_or_default();
-        std::env::set_var("PATH", format!("{}:{}", dir.display(), path));
-
-        let item = Arc::new(Mutex::new(DownloadItem::new(
-            "https://youtu.be/x".into(),
-            AudioFormat::Mp3,
-            Quality::Best,
-        )));
+        install_fake_ytdlp();
+        let item = new_item("https://youtu.be/hang");
         let cancel = item.lock().await.cancel.clone();
         let task = tokio::spawn({
             let item = item.clone();
@@ -156,6 +193,17 @@ mod tests {
             .expect("download did not stop after cancel");
         assert!(result.unwrap().is_ok());
         assert_ne!(item.lock().await.status, DownloadStatus::Completed);
-        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[tokio::test]
+    async fn failure_reports_ytdlp_error_line() {
+        install_fake_ytdlp();
+        let item = new_item("https://youtu.be/fail");
+
+        assert!(Downloader::new().download(item.clone()).await.is_err());
+        assert_eq!(
+            item.lock().await.error.as_deref(),
+            Some("unable to download video data: HTTP Error 403: Forbidden")
+        );
     }
 }
