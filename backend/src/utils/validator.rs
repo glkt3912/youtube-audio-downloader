@@ -3,7 +3,7 @@ use regex::Regex;
 
 static YOUTUBE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-        r"^(https?://)?((www|m|music)\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+",
+        r"^(https?://)?(((www|m|music)\.)?youtube\.com/(watch\?(\S*&)?v=|(shorts|live|embed)/)|youtu\.be/)[\w-]+",
     )
     .unwrap()
 });
@@ -71,6 +71,18 @@ mod tests {
         assert!(is_valid_youtube_url(
             "https://music.youtube.com/watch?v=dQw4w9WgXcQ"
         ));
+        assert!(is_valid_youtube_url(
+            "https://m.youtube.com/shorts/dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/live/dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/embed/dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ"
+        ));
     }
 
     #[test]
@@ -81,5 +93,11 @@ mod tests {
         assert!(!is_valid_youtube_url(""));
         assert!(!is_valid_youtube_url("https://evil.youtube.com/watch?v=x"));
         assert!(!is_valid_youtube_url("https://www.youtube.com/shorts/"));
+        assert!(!is_valid_youtube_url("https://music.youtu.be/dQw4w9WgXcQ"));
+        assert!(!is_valid_youtube_url("youtube.com.evil.com/watch?v=x"));
+        assert!(!is_valid_youtube_url("https://youtu.be.evil.com/x"));
+        assert!(!is_valid_youtube_url(
+            "https://www.youtube.com/watch?feature=share"
+        ));
     }
 }
