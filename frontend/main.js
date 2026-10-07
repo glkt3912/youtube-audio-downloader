@@ -233,6 +233,10 @@ function startQueueUpdate() {
 // イベントリスナー設定
 function setupEventListeners() {
     downloadBtn.addEventListener('click', startDownload);
+    document.getElementById('clear-finished-btn').addEventListener('click', async () => {
+        await invoke('clear_finished');
+        await updateQueue();
+    });
     showInstallGuideBtn.addEventListener('click', showInstallGuide);
     closeModalBtn.addEventListener('click', () => {
         installModal.classList.add('hidden');

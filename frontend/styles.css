@@ -235,8 +235,14 @@ body {
     border-radius: 8px;
 }
 
-.queue-section h2 {
+.queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
+}
+
+.queue-section h2 {
     font-size: 1.5rem;
 }
 

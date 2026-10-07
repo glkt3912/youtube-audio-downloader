@@ -8,7 +8,9 @@ mod models;
 mod services;
 mod utils;
 
-use commands::{add_download, cancel_download, check_deps, get_install_guide, get_queue};
+use commands::{
+    add_download, cancel_download, check_deps, clear_finished, get_install_guide, get_queue,
+};
 use services::DownloadQueue;
 use std::sync::Arc;
 
@@ -22,6 +24,7 @@ fn main() {
             add_download,
             get_queue,
             cancel_download,
+            clear_finished,
             check_deps,
             get_install_guide,
         ])
