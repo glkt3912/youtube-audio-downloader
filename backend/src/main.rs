@@ -13,6 +13,13 @@ use services::DownloadQueue;
 use std::sync::Arc;
 
 fn main() {
+    // Apps launched from Finder get a minimal PATH without Homebrew, so yt-dlp/ffmpeg aren't found.
+    #[cfg(target_os = "macos")]
+    {
+        let path = std::env::var("PATH").unwrap_or_default();
+        std::env::set_var("PATH", format!("{path}:/opt/homebrew/bin:/usr/local/bin"));
+    }
+
     let queue = Arc::new(DownloadQueue::new(3));
     queue.start_processing();
 
