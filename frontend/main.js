@@ -160,6 +160,13 @@ function renderQueue(items) {
     });
 }
 
+// 動画タイトル等の外部由来の文字列をHTMLに埋め込む前にエスケープ
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
 // ダウンロード項目のHTML生成
 function createDownloadItemHTML(item) {
     const statusClass = `status-${item.status.toLowerCase()}`;
@@ -171,7 +178,7 @@ function createDownloadItemHTML(item) {
         <div class="download-item">
             <div class="download-header">
                 <div class="download-info">
-                    <h3>${item.title || item.url}</h3>
+                    <h3>${escapeHtml(item.title || item.url)}</h3>
                     <div class="download-meta">
                         <span class="status-badge ${statusClass}">${statusText}</span>
                         <span> · </span>
@@ -194,7 +201,7 @@ function createDownloadItemHTML(item) {
 
             ${item.error ? `
                 <div class="error-message">
-                    エラー: ${item.error}
+                    エラー: ${escapeHtml(item.error)}
                 </div>
             ` : ''}
         </div>
