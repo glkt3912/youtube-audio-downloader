@@ -2,7 +2,10 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 static YOUTUBE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^(https?://)?(www\.)?(youtube\.com/watch\?v=|youtu\.be/)[\w-]+").unwrap()
+    Regex::new(
+        r"^(https?://)?((www|m|music)\.)?(youtube\.com/(watch\?v=|shorts/)|youtu\.be/)[\w-]+",
+    )
+    .unwrap()
 });
 
 pub fn is_valid_youtube_url(url: &str) -> bool {
@@ -59,6 +62,15 @@ mod tests {
         assert!(is_valid_youtube_url("www.youtube.com/watch?v=dQw4w9WgXcQ"));
         assert!(is_valid_youtube_url("youtube.com/watch?v=dQw4w9WgXcQ"));
         assert!(is_valid_youtube_url("youtu.be/dQw4w9WgXcQ"));
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/shorts/dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://m.youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
+        assert!(is_valid_youtube_url(
+            "https://music.youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
     }
 
     #[test]
@@ -67,5 +79,7 @@ mod tests {
         assert!(!is_valid_youtube_url("https://vimeo.com/123456"));
         assert!(!is_valid_youtube_url("not a url"));
         assert!(!is_valid_youtube_url(""));
+        assert!(!is_valid_youtube_url("https://evil.youtube.com/watch?v=x"));
+        assert!(!is_valid_youtube_url("https://www.youtube.com/shorts/"));
     }
 }
