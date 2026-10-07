@@ -34,6 +34,11 @@ pub async fn get_queue(queue: State<'_, Arc<DownloadQueue>>) -> Result<Vec<Downl
 }
 
 #[tauri::command]
+pub fn clear_finished(queue: State<'_, Arc<DownloadQueue>>) {
+    queue.clear_finished();
+}
+
+#[tauri::command]
 pub async fn cancel_download(
     id: String,
     queue: State<'_, Arc<DownloadQueue>>,

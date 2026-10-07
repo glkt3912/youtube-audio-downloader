@@ -76,6 +76,20 @@ impl DownloadQueue {
         true
     }
 
+    /// Drop completed/failed/cancelled items; queued and in-progress items stay.
+    pub fn clear_finished(&self) {
+        self.all_items
+            .lock()
+            .retain(|item_arc| match item_arc.try_lock() {
+                Ok(item) => !matches!(
+                    item.status,
+                    DownloadStatus::Completed | DownloadStatus::Failed | DownloadStatus::Cancelled
+                ),
+                // Briefly held elsewhere (downloader or get_all_items); skip it this time.
+                Err(_) => true,
+            });
+    }
+
     pub fn start_processing(&self) {
         let queue = self.queue.clone();
         let active = self.active.clone();
@@ -134,6 +148,44 @@ impl Default for DownloadQueue {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[tokio::test]
+    async fn clear_finished_keeps_only_unfinished() {
+        let queue = DownloadQueue::new(1);
+        for _ in 0..3 {
+            queue.add_item("https://youtu.be/x".into(), AudioFormat::Mp3, Quality::Best);
+        }
+        {
+            let items = queue.all_items.lock().clone();
+            items[0]
+                .lock()
+                .await
+                .update_status(DownloadStatus::Completed);
+            items[1].lock().await.set_error("boom".into());
+        }
+
+        queue.clear_finished();
+
+        let left = queue.get_all_items().await;
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].status, DownloadStatus::Queued);
+    }
+
+    #[tokio::test]
+    async fn clear_finished_skips_locked_items() {
+        let queue = DownloadQueue::new(1);
+        queue.add_item("https://youtu.be/x".into(), AudioFormat::Mp3, Quality::Best);
+        let item = queue.all_items.lock()[0].clone();
+        let mut guard = item.lock().await;
+        guard.update_status(DownloadStatus::Completed);
+
+        queue.clear_finished();
+        assert_eq!(queue.all_items.lock().len(), 1);
+
+        drop(guard);
+        queue.clear_finished();
+        assert!(queue.all_items.lock().is_empty());
+    }
 
     #[tokio::test]
     async fn remove_item_notifies_even_while_item_is_locked() {
