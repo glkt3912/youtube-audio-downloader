@@ -3,7 +3,6 @@ use crate::services::downloader::Downloader;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use tokio::task::JoinHandle;
 
 pub struct DownloadQueue {
     queue: Arc<Mutex<VecDeque<Arc<tokio::sync::Mutex<DownloadItem>>>>>,
@@ -11,7 +10,6 @@ pub struct DownloadQueue {
     all_items: Arc<Mutex<Vec<Arc<tokio::sync::Mutex<DownloadItem>>>>>,
     max_concurrent: usize,
     downloader: Arc<Downloader>,
-    task_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
 }
 
 impl DownloadQueue {
@@ -22,7 +20,6 @@ impl DownloadQueue {
             all_items: Arc::new(Mutex::new(Vec::new())),
             max_concurrent,
             downloader: Arc::new(Downloader::new()),
-            task_handles: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -64,6 +61,7 @@ impl DownloadQueue {
 
             if let Ok(mut item) = item_arc.try_lock() {
                 item.update_status(DownloadStatus::Cancelled);
+                item.cancel.notify_one();
             }
 
             let mut queue = self.queue.lock();
@@ -87,7 +85,6 @@ impl DownloadQueue {
         let active = self.active.clone();
         let downloader = self.downloader.clone();
         let max_concurrent = self.max_concurrent;
-        let task_handles = self.task_handles.clone();
 
         tauri::async_runtime::spawn(async move {
             loop {
@@ -110,7 +107,7 @@ impl DownloadQueue {
                         let downloader_clone = downloader.clone();
                         let item_clone = item_arc.clone();
 
-                        let handle: JoinHandle<()> = tokio::spawn(async move {
+                        tokio::spawn(async move {
                             let result = downloader_clone.download(item_clone.clone()).await;
 
                             if let Err(e) = result {
@@ -122,10 +119,6 @@ impl DownloadQueue {
                             active_lock
                                 .retain(|active_item| !Arc::ptr_eq(active_item, &item_clone));
                         });
-
-                        let mut handles = task_handles.lock();
-                        handles.retain(|h| !h.is_finished());
-                        handles.push(handle);
                     }
                 }
 

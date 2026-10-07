@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::Notify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,6 +13,8 @@ pub struct DownloadItem {
     pub status: DownloadStatus,
     pub progress: f32,
     pub error: Option<String>,
+    #[serde(skip)]
+    pub cancel: Arc<Notify>,
 }
 
 impl DownloadItem {
@@ -24,6 +28,7 @@ impl DownloadItem {
             status: DownloadStatus::Queued,
             progress: 0.0,
             error: None,
+            cancel: Arc::new(Notify::new()),
         }
     }
 
