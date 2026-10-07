@@ -3,7 +3,6 @@ use crate::services::downloader::Downloader;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
 use std::sync::Arc;
-use tokio::task::JoinHandle;
 
 pub struct DownloadQueue {
     queue: Arc<Mutex<VecDeque<Arc<tokio::sync::Mutex<DownloadItem>>>>>,
@@ -11,7 +10,6 @@ pub struct DownloadQueue {
     all_items: Arc<Mutex<Vec<Arc<tokio::sync::Mutex<DownloadItem>>>>>,
     max_concurrent: usize,
     downloader: Arc<Downloader>,
-    task_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
 }
 
 impl DownloadQueue {
@@ -22,7 +20,6 @@ impl DownloadQueue {
             all_items: Arc::new(Mutex::new(Vec::new())),
             max_concurrent,
             downloader: Arc::new(Downloader::new()),
-            task_handles: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -50,36 +47,33 @@ impl DownloadQueue {
     }
 
     pub async fn remove_item(&self, id: &str) -> bool {
-        let mut all_items = self.all_items.lock();
+        // Snapshot first: never hold the parking_lot guard across .await.
+        let items = self.all_items.lock().clone();
 
-        if let Some(pos) = all_items.iter().position(|item_arc| {
-            let item = item_arc.try_lock();
-            if let Ok(item) = item {
-                item.id == id
-            } else {
-                false
-            }
-        }) {
-            let item_arc = all_items.remove(pos);
-
-            if let Ok(mut item) = item_arc.try_lock() {
+        // Wait for each item's lock instead of try_lock, so a cancel can't be dropped
+        // just because the downloader happens to be updating progress.
+        let mut target = None;
+        for item_arc in items {
+            let mut item = item_arc.lock().await;
+            if item.id == id {
                 item.update_status(DownloadStatus::Cancelled);
+                item.cancel.notify_one();
+                drop(item);
+                target = Some(item_arc);
+                break;
             }
-
-            let mut queue = self.queue.lock();
-            queue.retain(|item_arc| {
-                let item = item_arc.try_lock();
-                if let Ok(item) = item {
-                    item.id != id
-                } else {
-                    true
-                }
-            });
-
-            true
-        } else {
-            false
         }
+        let Some(target) = target else {
+            return false;
+        };
+
+        self.all_items
+            .lock()
+            .retain(|item_arc| !Arc::ptr_eq(item_arc, &target));
+        self.queue
+            .lock()
+            .retain(|item_arc| !Arc::ptr_eq(item_arc, &target));
+        true
     }
 
     /// Drop completed/failed/cancelled items; queued and in-progress items stay.
@@ -101,7 +95,6 @@ impl DownloadQueue {
         let active = self.active.clone();
         let downloader = self.downloader.clone();
         let max_concurrent = self.max_concurrent;
-        let task_handles = self.task_handles.clone();
 
         tauri::async_runtime::spawn(async move {
             loop {
@@ -124,7 +117,7 @@ impl DownloadQueue {
                         let downloader_clone = downloader.clone();
                         let item_clone = item_arc.clone();
 
-                        let handle: JoinHandle<()> = tokio::spawn(async move {
+                        tokio::spawn(async move {
                             let result = downloader_clone.download(item_clone.clone()).await;
 
                             if let Err(e) = result {
@@ -136,10 +129,6 @@ impl DownloadQueue {
                             active_lock
                                 .retain(|active_item| !Arc::ptr_eq(active_item, &item_clone));
                         });
-
-                        let mut handles = task_handles.lock();
-                        handles.retain(|h| !h.is_finished());
-                        handles.push(handle);
                     }
                 }
 
@@ -158,6 +147,7 @@ impl Default for DownloadQueue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn clear_finished_keeps_only_unfinished() {
@@ -195,5 +185,29 @@ mod tests {
         drop(guard);
         queue.clear_finished();
         assert!(queue.all_items.lock().is_empty());
+    }
+
+    #[tokio::test]
+    async fn remove_item_notifies_even_while_item_is_locked() {
+        let queue = Arc::new(DownloadQueue::new(1));
+        let id = queue.add_item("https://youtu.be/x".into(), AudioFormat::Mp3, Quality::Best);
+        let item = queue.all_items.lock()[0].clone();
+        let cancel = item.lock().await.cancel.clone();
+
+        // Simulate the downloader holding the item lock when cancel arrives.
+        let guard = item.lock().await;
+        let remove = tokio::spawn({
+            let queue = queue.clone();
+            async move { queue.remove_item(&id).await }
+        });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        drop(guard);
+
+        assert!(remove.await.unwrap());
+        tokio::time::timeout(Duration::from_secs(1), cancel.notified())
+            .await
+            .expect("cancel was not notified");
+        assert!(queue.all_items.lock().is_empty());
+        assert!(queue.queue.lock().is_empty());
     }
 }
