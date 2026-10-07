@@ -47,37 +47,33 @@ impl DownloadQueue {
     }
 
     pub async fn remove_item(&self, id: &str) -> bool {
-        let mut all_items = self.all_items.lock();
+        // Snapshot first: never hold the parking_lot guard across .await.
+        let items = self.all_items.lock().clone();
 
-        if let Some(pos) = all_items.iter().position(|item_arc| {
-            let item = item_arc.try_lock();
-            if let Ok(item) = item {
-                item.id == id
-            } else {
-                false
-            }
-        }) {
-            let item_arc = all_items.remove(pos);
-
-            if let Ok(mut item) = item_arc.try_lock() {
+        // Wait for each item's lock instead of try_lock, so a cancel can't be dropped
+        // just because the downloader happens to be updating progress.
+        let mut target = None;
+        for item_arc in items {
+            let mut item = item_arc.lock().await;
+            if item.id == id {
                 item.update_status(DownloadStatus::Cancelled);
                 item.cancel.notify_one();
+                drop(item);
+                target = Some(item_arc);
+                break;
             }
-
-            let mut queue = self.queue.lock();
-            queue.retain(|item_arc| {
-                let item = item_arc.try_lock();
-                if let Ok(item) = item {
-                    item.id != id
-                } else {
-                    true
-                }
-            });
-
-            true
-        } else {
-            false
         }
+        let Some(target) = target else {
+            return false;
+        };
+
+        self.all_items
+            .lock()
+            .retain(|item_arc| !Arc::ptr_eq(item_arc, &target));
+        self.queue
+            .lock()
+            .retain(|item_arc| !Arc::ptr_eq(item_arc, &target));
+        true
     }
 
     pub fn start_processing(&self) {
@@ -131,5 +127,35 @@ impl DownloadQueue {
 impl Default for DownloadQueue {
     fn default() -> Self {
         Self::new(3)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn remove_item_notifies_even_while_item_is_locked() {
+        let queue = Arc::new(DownloadQueue::new(1));
+        let id = queue.add_item("https://youtu.be/x".into(), AudioFormat::Mp3, Quality::Best);
+        let item = queue.all_items.lock()[0].clone();
+        let cancel = item.lock().await.cancel.clone();
+
+        // Simulate the downloader holding the item lock when cancel arrives.
+        let guard = item.lock().await;
+        let remove = tokio::spawn({
+            let queue = queue.clone();
+            async move { queue.remove_item(&id).await }
+        });
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        drop(guard);
+
+        assert!(remove.await.unwrap());
+        tokio::time::timeout(Duration::from_secs(1), cancel.notified())
+            .await
+            .expect("cancel was not notified");
+        assert!(queue.all_items.lock().is_empty());
+        assert!(queue.queue.lock().is_empty());
     }
 }
