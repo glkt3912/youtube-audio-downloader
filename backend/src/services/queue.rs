@@ -82,7 +82,7 @@ impl DownloadQueue {
         }
     }
 
-    /// Drop completed/failed items from the list; queued and in-progress items stay.
+    /// Drop completed/failed/cancelled items; queued and in-progress items stay.
     pub fn clear_finished(&self) {
         self.all_items
             .lock()
@@ -91,7 +91,7 @@ impl DownloadQueue {
                     item.status,
                     DownloadStatus::Completed | DownloadStatus::Failed | DownloadStatus::Cancelled
                 ),
-                // Locked means the downloader is updating it, i.e. still in progress.
+                // Briefly held elsewhere (downloader or get_all_items); skip it this time.
                 Err(_) => true,
             });
     }
@@ -179,5 +179,21 @@ mod tests {
         let left = queue.get_all_items().await;
         assert_eq!(left.len(), 1);
         assert_eq!(left[0].status, DownloadStatus::Queued);
+    }
+
+    #[tokio::test]
+    async fn clear_finished_skips_locked_items() {
+        let queue = DownloadQueue::new(1);
+        queue.add_item("https://youtu.be/x".into(), AudioFormat::Mp3, Quality::Best);
+        let item = queue.all_items.lock()[0].clone();
+        let mut guard = item.lock().await;
+        guard.update_status(DownloadStatus::Completed);
+
+        queue.clear_finished();
+        assert_eq!(queue.all_items.lock().len(), 1);
+
+        drop(guard);
+        queue.clear_finished();
+        assert!(queue.all_items.lock().is_empty());
     }
 }

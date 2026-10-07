@@ -234,8 +234,12 @@ function startQueueUpdate() {
 function setupEventListeners() {
     downloadBtn.addEventListener('click', startDownload);
     document.getElementById('clear-finished-btn').addEventListener('click', async () => {
-        await invoke('clear_finished');
-        await updateQueue();
+        try {
+            await invoke('clear_finished');
+            await updateQueue();
+        } catch (error) {
+            console.error('クリア失敗:', error);
+        }
     });
     showInstallGuideBtn.addEventListener('click', showInstallGuide);
     closeModalBtn.addEventListener('click', () => {
