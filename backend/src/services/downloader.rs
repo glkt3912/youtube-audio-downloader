@@ -37,7 +37,10 @@ impl Downloader {
         let output_template = format!("{}/%(title)s.%(ext)s", self.download_dir);
 
         let mut cmd = Command::new("yt-dlp");
-        cmd.arg("--extract-audio")
+        // ponytail: YouTube 403s https audio streams without a PO token; HLS works. Drop when yt-dlp handles it.
+        cmd.arg("-f")
+            .arg("ba[protocol^=m3u8]/ba")
+            .arg("--extract-audio")
             .arg("--audio-format")
             .arg(format.as_str())
             .arg("--audio-quality")
