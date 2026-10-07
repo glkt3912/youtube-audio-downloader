@@ -16,5 +16,8 @@ parking_lot = "0.12"
 uuid = { version = "1.6", features = ["v4"] }
 dirs = "5.0"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
